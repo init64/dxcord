@@ -19,23 +19,23 @@ module.exports = class VoiceStateUpdate {
             this.client.logs.voice('switch', newState.member, oldState.channel, newState.channel);
         } else if (newState.channelId === null) {
             if (!voiceData[userId]) return;
-            let date = new Date(Date.now() - voiceData[userId]?.joinedAt),
-                _date = new Date(),
-                day = _date.getDay(),
-                month = _date.getMonth() + 1,
-                year = _date.getFullYear();
+            let seconds = (new Date().getTime() - new Date()) / 1000,
+                date = new Date(),
+                day = date.getDay(),
+                month = date.getMonth() + 1,
+                year = date.getFullYear();
             if (!user) {
                 new this.client.db.users({
                     userId,
                     inVoice: [{
                         day, month, year,
-                        total: date.getSeconds()
+                        total: seconds
                     }]
                 }).save();
             } else {
                 let voice = user.inVoice.find(date => date.day === day && date.month === month && date.year === year)
-                if (voice) voice.total += date.getSeconds();
-                else user.inVoice = [...user.inVoice, { day, month, year, total: date.getSeconds() }];
+                if (voice) voice.total += seconds;
+                else user.inVoice = [...user.inVoice, { day, month, year, total: seconds }];
                 user.save();
             }
             delete voiceData[userId];
