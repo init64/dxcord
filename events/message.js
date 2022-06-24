@@ -28,7 +28,9 @@ module.exports = class Message {
 
 		let user = await this.client.db.users.findOne({ userId: message.member.id });
 
-		if ((cmd.config.memberPermissions?.length > 0 && !user) || !cmd.config.memberPermissions.includes(user.status)) {
+		console.log(cmd.config.memberPermissions);
+
+		if (cmd.config.memberPermissions?.length > 0 && (!user || !cmd.config.memberPermissions.includes(user.status))) {
 			let error = new MessageEmbed()
 				.setDescription(`<@${message.member.id}>: You don't have enough rights for this command...`)
 				.setColor('#f64072');
