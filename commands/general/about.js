@@ -68,7 +68,7 @@ module.exports = class About extends Command {
             .addField(`Arch`, `\` ${os.release()} \` │ \` ${os.arch()} \``, true)
             .addField(`Platform`, `${os.platform()}`, true)
             .addField(`Server uptime`, `\` ${this.client.getTime(Math.floor(os.uptime()))} \``, true)
-            .addField(`Memory`, `**\` ${this.formatBytes(os.freemem())} \` [${`▇`.repeat(`${memoryPercent}`[0])} ${Math.floor(memoryPercent)}%](${messageUrl}) ${`▇`.repeat(10 - `${memoryPercent}`[0])} \` ${this.formatBytes(os.totalmem())} \`**`)
+            .addField(`Memory`, `**\` ${this.formatBytes(os.totalmem() - os.freemem())} \` [${`▇`.repeat(`${memoryPercent}`[0])} ${Math.floor(memoryPercent)}%](${messageUrl}) ${`▇`.repeat(10 - `${memoryPercent}`[0])} \` ${this.formatBytes(os.totalmem())} \`**`)
             .setColor('#2f3136')
             .setTimestamp();
     }
