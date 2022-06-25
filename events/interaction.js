@@ -21,7 +21,7 @@ module.exports = class Interaction {
                             }
                         }).save();
                     } else {
-                        guild['config']['logs']['channelId'] = intr.values[0];
+                        guild['config']['logs']['channelId'] = intr.values[0] === 'logs:disable' ? null : intr.values[0];
                         guild.save();
                     }
                 }

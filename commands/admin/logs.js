@@ -22,15 +22,13 @@ module.exports = class Logs extends Command {
             .setCustomId('select:logs:channel_id')
             .setPlaceholder('Select a channel for logging')
             .addOptions([
+                { label: 'Disable', description: 'Disable logging', value: 'logs:disable', emoji: '🔴' },
                 ...message.guild.channels.cache.filter(channel => channel.type === 'GUILD_TEXT').map(channel => {
                     return { emoji: '#️⃣', label: channel.name, description: 'Channel text', value: channel.id }
                 })
             ])
         let menu = new MessageActionRow()
             .addComponents(channelId)
-        message.channel.send({ content: '))', components: [menu] });
-        // ...message.guild.channels.cache.map(channel => {
-            // return { label: channel.name, value: channel.id }
-        // })
+        message.channel.send({ components: [menu] });
     }
 }

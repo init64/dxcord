@@ -19,7 +19,7 @@ module.exports = class VoiceStateUpdate {
             this.client.logs.voice('switch', newState.member, oldState.channel, newState.channel);
         } else if (newState.channelId === null) {
             if (!voiceData[userId]) return;
-            let seconds = (new Date().getTime() - new Date(voiceData[userId]?.joinedAt).getTime()) / 1000,
+            let seconds = Math.floor((new Date().getTime() - new Date(voiceData[userId]?.joinedAt).getTime()) / 1000),
                 date = new Date(),
                 day = date.getDay(),
                 month = date.getMonth() + 1,
