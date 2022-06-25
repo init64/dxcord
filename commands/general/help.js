@@ -20,6 +20,7 @@ module.exports = class Help extends Command {
     async run(message, args) {
         let embed = new MessageEmbed()
             .setTitle('Help Menu')
+            .setDescription(`**Prefix:** \` ${this.client.prefix} \``)
             .setColor('#FFB433')
             .addFields([
                 ...this.client.commands.filter(cmd => !cmd.config.hide).map(cmd => {
