@@ -20,6 +20,16 @@ module.exports = class Bot {
         this.prefix = '>';
     }
 
+    getTime(s) {
+        let d = Math.floor(s / 86400);
+            s -= d * 86400;
+        let h = Math.floor(s / 3600);
+            s -= h * 3600;
+        let m = Math.floor(s / 60);
+            s -= m * 60;
+        return (d > 0 ? `${d}d ` : '') + (h > 0 ? `${h}h ` : '') + (m > 0 ? `${m}m ` : '') + `${s}s`;
+    };
+
     loadCommand(pathCommand, command) {
         try {
             let props = new (require(`${pathCommand}/${command}`))(this);

@@ -29,8 +29,10 @@ module.exports = class Interaction {
         }
     }
 
-	async run(intr) {
-        let category = intr.customId.split(':');
-        if (this[category[0]]) this[category[0]](category.slice(1), intr);
+	async run(interaction) {
+        let category = interaction.customId.split(':'),
+            command = this.client.commands.get(category[0]);
+        if (command && command.config.interactionEvents && command?.interaction) return command.interaction(category.slice(1), interaction);
+        if (this[category[0]]) this[category[0]](category.slice(1), interaction);
 	}
 }

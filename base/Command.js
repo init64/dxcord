@@ -1,3 +1,5 @@
+const { Message, Integration } = require('discord.js');
+
 module.exports = class Command {
 	constructor(client, {
 		name = null,
@@ -9,8 +11,25 @@ module.exports = class Command {
 		memberPermissions = new Array(),
 		nsfw = false,
         clear = true,
-        hide = false
+        hide = false,
+		interactionEvents = false
 	}) {
-        this.config = { name, description, emoji, dirname, aliases, botPermissions, memberPermissions, nsfw, clear, hide }
+        this.config = {
+			name, description, emoji, dirname,
+			aliases, botPermissions, memberPermissions, nsfw,
+			clear, hide, interactionEvents
+		}
     }
+
+	/**
+	 * @param {Array} args
+	 * @param {Integration} interaction
+	*/
+	interaction(args, interaction) {}
+
+	/**
+	 * @param {Message} message
+	 * @param {Array} args
+	*/
+	run(message, args) {}
 }

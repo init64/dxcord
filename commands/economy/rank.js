@@ -22,25 +22,16 @@ module.exports = class Rank extends Command {
             let date = new Date(),
                 dd = date.getDay(),
                 mm = date.getMonth() + 1,
-                yy = date.getFullYear(),
-                getTime = s => {
-                    let d = Math.floor(s / 86400);
-                        s -= d * 86400;
-                    let h = Math.floor(s / 3600);
-                        s -= h * 3600;
-                    let m = Math.floor(s / 60);
-                        s -= m * 60;
-                    return (d > 0 ? `${d}d ` : '') + (h > 0 ? `${h}h ` : '') + (m > 0 ? `${m}m ` : '') + `${s}s`;
-                };
+                yy = date.getFullYear();
             embedAccount
                 .setAuthor({
                     iconURL: message.member.user.displayAvatarURL(),
                     name: `${message.member.user.tag} [${message.member.nickname}]`
                 })
                 .setDescription(`**Time in voice chat:**\n`)
-                .addField(`For all the time`, `**\` ${getTime(user.inVoice.map(day => day.total).reduce((a, b) => a + b, 0))} \`**`, true)
-                .addField(`Per month`, `**\` ${getTime(user.inVoice.filter(({ month, year }) => month === mm && year === yy).map(day => day.total).reduce((a, b) => a + b, 0))} \`**`, true)
-                .addField(`For today`, `**\` ${getTime(user.inVoice.filter(({ day, month, year }) => day === dd && month === mm && year === yy).map(day => day.total).reduce((a, b) => a + b, 0))} \`**`, true)
+                .addField(`For all the time`, `**\` ${this.client.getTime(user.inVoice.map(day => day.total).reduce((a, b) => a + b, 0))} \`**`, true)
+                .addField(`Per month`, `**\` ${this.client.getTime(user.inVoice.filter(({ month, year }) => month === mm && year === yy).map(day => day.total).reduce((a, b) => a + b, 0))} \`**`, true)
+                .addField(`For today`, `**\` ${this.client.getTime(user.inVoice.filter(({ day, month, year }) => day === dd && month === mm && year === yy).map(day => day.total).reduce((a, b) => a + b, 0))} \`**`, true)
                 .addField(`Status`, `${user.status}`)
                 .setColor('#2f3136')
         } else {
