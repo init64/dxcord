@@ -33,7 +33,7 @@ module.exports = class VoiceStateUpdate {
                     }]
                 }).save();
             } else {
-                let voice = user.inVoice.find(date => date.day === day && date.month === month && date.year === year)
+                let voice = user.inVoice.find(date => date.day === day && date.month === month && date.year === year);
                 if (voice) voice.total += seconds;
                 else user.inVoice = [...user.inVoice, { day, month, year, total: seconds }];
                 user.save();

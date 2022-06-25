@@ -18,7 +18,7 @@ module.exports = class About extends Command {
 
         this.category = 'about';
 
-        this.NO = '';
+        this.NO = ' ᠌';//'';
     }
 
     async interaction(args, interaction) {
