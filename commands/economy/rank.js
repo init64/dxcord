@@ -16,8 +16,10 @@ module.exports = class Rank extends Command {
     }
 
     async run(message, args) {
-        let user = await this.client.db.users.findOne({ userId: message.member.id }),
+        let userId = args[0] ? /<@(.*)>/.exec(args[0])[1] : message.member.id,
+            user = await this.client.db.users.findOne({ userId }),
             embedAccount = new MessageEmbed().setTimestamp();
+            console.log(userId);
         if (user) {
             let date = new Date(),
                 dd = date.getDay(),
