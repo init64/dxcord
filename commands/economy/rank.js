@@ -19,7 +19,6 @@ module.exports = class Rank extends Command {
         let userId = args[0] ? /<@(.*)>/.exec(args[0])[1] : message.member.id,
             user = await this.client.db.users.findOne({ userId }),
             embedAccount = new MessageEmbed().setTimestamp();
-            console.log(userId);
         if (user) {
             let date = new Date(),
                 dd = date.getDay(),
@@ -27,8 +26,8 @@ module.exports = class Rank extends Command {
                 yy = date.getFullYear();
             embedAccount
                 .setAuthor({
-                    iconURL: message.member.user.displayAvatarURL(),
-                    name: `${message.member.user.tag} [${message.member.nickname}]`
+                    iconURL: message.guild.members.cache.get(userId).displayAvatarURL(),
+                    name: `${message.guild.members.cache.get(userId).user.tag} [${message.guild.members.cache.get(userId).nickname}]`
                 })
                 .setDescription(`**Time in voice chat:**\n`)
                 .addField(`For all the time`, `**\` ${this.client.getTime(user.inVoice.map(day => day.total).reduce((a, b) => a + b, 0))} \`**`, true)

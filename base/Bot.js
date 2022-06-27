@@ -18,6 +18,8 @@ module.exports = class Bot {
         this.logs = new (require('./Logs.js'))(this);
 
         this.prefix = '>';
+
+        // this.bot.on('message', msg => msg.guild.members.cache.get('').user.ta)
     }
 
     getTime(s) {
