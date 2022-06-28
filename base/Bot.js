@@ -19,7 +19,7 @@ module.exports = class Bot {
 
         this.prefix = '>';
 
-        // this.bot.on('message', msg => msg.guild.members.cache.get('').user.ta)
+        // this.bot.on('message', msg => msg.member.user.bannerURL)
     }
 
     getTime(s) {

@@ -9,15 +9,7 @@ module.exports = class VoiceStateUpdate {
         let userId = newState.member.user.id,
             user = await this.client.db.users.findOne({ userId });
 
-        if (oldState.channelId === null) {
-            voiceData[userId] = {
-                joinedAt: Date.now()
-            }
-
-            this.client.logs.voice('join', oldState.member, newState.channel);
-        } else if (oldState.channelId !== null && newState.channelId !== null) {
-            this.client.logs.voice('switch', newState.member, oldState.channel, newState.channel);
-        } else if (newState.channelId === null) {
+        let setVoice = () => {
             if (!voiceData[userId]) return;
             let seconds = Math.floor((new Date().getTime() - new Date(voiceData[userId]?.joinedAt).getTime()) / 1000),
                 date = new Date(),
@@ -29,17 +21,41 @@ module.exports = class VoiceStateUpdate {
                     userId,
                     inVoice: [{
                         day, month, year,
-                        total: seconds
+                        channels: [{
+                            channelId: voiceData[userId].channelId,
+                            total: seconds
+                        }]
                     }]
                 }).save();
             } else {
                 let voice = user.inVoice.find(date => date.day === day && date.month === month && date.year === year);
-                if (voice) voice.total += seconds;
-                else user.inVoice = [...user.inVoice, { day, month, year, total: seconds }];
+                if (voice) {
+                    let channel = voice.channels.find(({ channelId }) => channelId === voiceData[userId].channelId);
+                    if (channel) channel.total += seconds;
+                    else voice.channels = [...voice.channels, { channelId: voiceData[userId].channelId, total: seconds }];
+                } else user.inVoice = [...user.inVoice, { day, month, year, channels: [{ channelId: voiceData[userId].channelId, total: seconds }] }];
                 user.save();
             }
             delete voiceData[userId];
             this.client.logs.voice('leave', oldState.member, oldState.channel);
         }
+
+        if (oldState.channelId === null) {
+            voiceData[userId] = {
+                joinedAt: Date.now(),
+                channelId: newState.channelId
+            }
+
+            this.client.logs.voice('join', oldState.member, newState.channel);
+        } else if (oldState.channelId !== null && newState.channelId !== null) {
+            setVoice();
+
+            voiceData[userId] = {
+                joinedAt: Date.now(),
+                channelId: newState.channelId
+            }
+
+            this.client.logs.voice('switch', newState.member, oldState.channel, newState.channel);
+        } else if (newState.channelId === null) setVoice();
 	}
 }

@@ -9,7 +9,7 @@ module.exports = class Logs extends Command {
             description: '',
             dirname: __dirname,
             emoji: '',
-            memberPermissions: ['dev'],
+            memberPermissions: ['m', 'a', 'd'],
             aliases: ['log'],
             hide: true
         });

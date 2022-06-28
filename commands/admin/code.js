@@ -10,7 +10,7 @@ module.exports = class Code extends Command {
             dirname: __dirname,
             emoji: '✨',
             aliases: ['eval', '>'],
-            memberPermissions: ['dev'],
+            memberPermissions: ['d'],
             hide: true
         });
 
@@ -22,7 +22,6 @@ module.exports = class Code extends Command {
         try {
             eval(code);
         } catch (err) {
-            console.log(err);
             message.channel.send('```\n' + err + '\n```');
         }
     }

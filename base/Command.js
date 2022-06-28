@@ -16,8 +16,8 @@ module.exports = class Command {
 	}) {
         this.config = {
 			name, description, emoji, dirname,
-			aliases, botPermissions, memberPermissions, nsfw,
-			clear, hide, interactionEvents
+			aliases, botPermissions, memberPermissions,
+			nsfw, clear, hide, interactionEvents
 		}
     }
 
