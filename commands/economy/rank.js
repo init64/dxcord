@@ -46,7 +46,7 @@ module.exports = class Rank extends Command {
 
     getTime(user) {
         let date = new Date(),
-            dd = date.getDay(),
+            dd = date.getDate(),
             mm = date.getMonth() + 1,
             yy = date.getFullYear();
         return {
