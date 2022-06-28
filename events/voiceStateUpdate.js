@@ -13,7 +13,7 @@ module.exports = class VoiceStateUpdate {
             if (!voiceData[userId]) return;
             let seconds = Math.floor((new Date().getTime() - new Date(voiceData[userId]?.joinedAt).getTime()) / 1000),
                 date = new Date(),
-                day = date.getDay(),
+                day = date.getDate(),
                 month = date.getMonth() + 1,
                 year = date.getFullYear();
             if (!user) {
