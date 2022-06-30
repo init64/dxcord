@@ -45,6 +45,7 @@ module.exports = class Rank extends Command {
     }
 
     getTime(user) {
+        if (!user) return { all: '', month: '', today: '' }
         let date = new Date(),
             dd = date.getDate(),
             mm = date.getMonth() + 1,
@@ -65,7 +66,7 @@ module.exports = class Rank extends Command {
                 
                 allTime = time.all.map(day => day.channels.map(channel => channel.total).reduce((a, b) => a + b, 0)).reduce((a, b) => a + b, 0),
                 monthTime = time.month.map(day => day.channels.map(channel => channel.total).reduce((a, b) => a + b, 0)).reduce((a, b) => a + b, 0),
-                todayTime = time.today.channels.map(channel => channel.total).reduce((a, b) => a + b, 0);
+                todayTime = time.today?.channels.length > 0 ? this.client.getTime(time.today.channels.map(channel => channel.total).reduce((a, b) => a + b, 0)) : 'So far there is nothing here';
             embedAccount
                 .setAuthor({
                     iconURL: message.guild.members.cache.get(this.userId).displayAvatarURL(),
@@ -74,7 +75,7 @@ module.exports = class Rank extends Command {
                 .setDescription(`**Time in voice chat:**\n`)
                 .addField(`For all the time`, `**\` ${this.client.getTime(allTime)} \`**`, true)
                 .addField(`Per month`, `**\` ${this.client.getTime(monthTime)} \`**`, true)
-                .addField(`For today`, `**\` ${this.client.getTime(todayTime)} \`**`, true)
+                .addField(`For today`, `**\` ${todayTime} \`**`, true)
                 .addField(`Permissions`, user.roles.map(role => `**${this.roles[role]}**`).join(', '))
                 .setColor('#2f3136')
         } else {
@@ -91,6 +92,10 @@ module.exports = class Rank extends Command {
     */
     embedUserServerInfo(message) {
         let user = message.guild.members.cache.get(this.userId);
+        if (!user) return new MessageEmbed()
+            .setDescription(`<@${message.member.id}>: So far there is no information about you.`)
+            .setColor('#f64072')
+            .setTimestamp()
         return new MessageEmbed()
             .setAuthor({
                 iconURL: user?.displayAvatarURL(),
@@ -110,13 +115,18 @@ module.exports = class Rank extends Command {
             member = message.guild.members.cache.get(this.userId),
             time = this.getTime(user),
             getList = arr => {
+                if (!arr || arr?.length < 1) return '` So far there is nothing here `'
                 let list = new Array();
                 for (let { channelId, total } of arr.map(x => x.channels).reduce((a, b) => [...a, ...b], [])) {
                     let q = list.find(h => h.channelId === channelId);
                     q ? q.total += total : list = [...list, { channelId, total }]
                 }
-                return list.sort((a, b) => b.total - a.total).map(({ channelId, total }) => `<#${channelId}> -> \` ${this.client.getTime(total)} \``).join('\n')
+                return list.sort((a, b) => b.total - a.total).map(({ channelId, total }) => `<#${channelId}> ➜ \` ${this.client.getTime(total)} \``).join('\n')
             }
+        if (!user) return new MessageEmbed()
+            .setDescription(`<@${message.member.id}>: So far there is no information about you.`)
+            .setColor('#f64072')
+            .setTimestamp()
         return new MessageEmbed()
             .setAuthor({
                 iconURL: member?.displayAvatarURL(),
@@ -126,7 +136,7 @@ module.exports = class Rank extends Command {
             .setDescription(`Find out which channels you spent the most time on.`)
             .addField(`For all the time`, getList(time.all), true)
             .addField(`Per month`, getList(time.month), true)
-            .addField(`For today`, time.today.channels.sort((a, b) => b.total - a.total).map(({ channelId, total }) => `<#${channelId}> -> \` ${this.client.getTime(total)} \``).join('\n'), true)
+            .addField(`For today`, time.today?.channels?.length > 0 ? time.today?.channels.sort((a, b) => b.total - a.total).map(({ channelId, total }) => `<#${channelId}> ➜ \` ${this.client.getTime(total)} \``).join('\n') : '` So far there is nothing here `', true)
             .setTimestamp();
     }
 
