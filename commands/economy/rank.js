@@ -2,6 +2,8 @@ const
     Command = require('../../base/Command.js'),
     { MessageEmbed, MessageButton, MessageActionRow, Message } = require('discord.js');
 
+let users = {};
+
 module.exports = class Rank extends Command {
     constructor(client) {
         super(client, {
@@ -25,6 +27,8 @@ module.exports = class Rank extends Command {
             d: 'Developer',
             o: 'Owner'
         }
+
+        this.users = users;
     }
 
     async interaction(args, interaction) {
@@ -58,7 +62,8 @@ module.exports = class Rank extends Command {
     }
 
     async embedAccount(message) {
-        let user = await this.client.db.users.findOne({ userId: this.userId }),
+        let userId = this.users[message.id],
+            user = await this.client.db.users.findOne({ userId }),
             embedAccount = new MessageEmbed().setTimestamp();
             
         if (user) {
@@ -69,8 +74,8 @@ module.exports = class Rank extends Command {
                 todayTime = time.today?.channels.length > 0 ? this.client.getTime(time.today.channels.map(channel => channel.total).reduce((a, b) => a + b, 0)) : 'So far there is nothing here';
             embedAccount
                 .setAuthor({
-                    iconURL: message.guild.members.cache.get(this.userId).displayAvatarURL(),
-                    name: `${message.guild.members.cache.get(this.userId).user.tag} [${message.guild.members.cache.get(this.userId).nickname}]`
+                    iconURL: message.guild.members.cache.get(userId).displayAvatarURL(),
+                    name: `${message.guild.members.cache.get(userId).user.tag} [${message.guild.members.cache.get(userId).nickname}]`
                 })
                 .setDescription(`**Time in voice chat:**\n`)
                 .addField(`For all the time`, `**\` ${this.client.getTime(allTime)} \`**`, true)
@@ -80,7 +85,7 @@ module.exports = class Rank extends Command {
                 .setColor('#2f3136')
         } else {
             embedAccount
-                .setDescription(`<@${message.member.id}>: So far there is no information about you.`)
+                .setDescription(`<@${userId}>: So far there is no information about you.`)
                 .setColor('#f64072')
         }
 
@@ -91,7 +96,7 @@ module.exports = class Rank extends Command {
      * @param {Message} message
     */
     embedUserServerInfo(message) {
-        let user = message.guild.members.cache.get(this.userId);
+        let user = message.guild.members.cache.get(this.users[message.id]);
         if (!user) return new MessageEmbed()
             .setDescription(`<@${message.member.id}>: So far there is no information about you.`)
             .setColor('#f64072')
@@ -111,8 +116,9 @@ module.exports = class Rank extends Command {
     }
 
     async embedUserTime(message) {
-        let user = await this.client.db.users.findOne({ userId: this.userId }),
-            member = message.guild.members.cache.get(this.userId),
+        let userId = this.users[message.id],
+            user = await this.client.db.users.findOne({ userId }),
+            member = message.guild.members.cache.get(userId),
             time = this.getTime(user),
             getList = arr => {
                 if (!arr || arr?.length < 1) return '` So far there is nothing here `'
@@ -124,7 +130,7 @@ module.exports = class Rank extends Command {
                 return list.sort((a, b) => b.total - a.total).map(({ channelId, total }) => `<#${channelId}> ➜ \` ${this.client.getTime(total)} \``).join('\n')
             }
         if (!user) return new MessageEmbed()
-            .setDescription(`<@${message.member.id}>: So far there is no information about you.`)
+            .setDescription(`<@${userId}>: So far there is no information about you.`)
             .setColor('#f64072')
             .setTimestamp()
         return new MessageEmbed()
@@ -166,11 +172,14 @@ module.exports = class Rank extends Command {
     }
 
     async run(message, args) {
-        this.userId = args[0] ? /<@(.*)>/.exec(args[0])[1] : message.member.id;
+        let userId = args[0] ? /<@(.*)>/.exec(args[0])[1] : message.member.id;
         this.category = message.content.slice(this.client.prefix.length).split(' ')[0] === 'user' ? 'user' : 'account';
-        message.channel.send({
-            embeds: [this.category === 'account' ? await this.embedAccount(message) : await this.embedUserServerInfo(message)],
-            components: [this.buttons()]
+        message.channel.send({ embeds: [new MessageEmbed().setFooter('.')] }).then(async m => {
+            this.users[m.id] = await userId;
+            m.edit({
+                embeds: [this.category === 'account' ? await this.embedAccount(m) : await this.embedUserServerInfo(m)],
+                components: [this.buttons()]
+            });
         });
     }
 }

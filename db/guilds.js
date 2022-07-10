@@ -5,6 +5,9 @@ const schema = new mongoose.Schema({
     config: {
         logs: {
             channelId: { type: String }
+        },
+        commands: {
+            channelId: { type: String }
         }
     }
 });

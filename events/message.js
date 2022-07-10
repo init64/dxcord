@@ -24,6 +24,10 @@ module.exports = class Message {
 
 		if (!cmd) return;
 
+		let guild = await this.client.db.guilds.findOne({ guildId: message.guild.id });
+
+		if (guild['config']['commands']['channelId'] !== null && guild['config']['commands']['channelId'] !== message.channel.id) return;
+
 		if (cmd.config.clear) message.delete();
 
 		let user = await this.client.db.users.findOne({ userId: message.member.id });
