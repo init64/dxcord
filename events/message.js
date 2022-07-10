@@ -26,7 +26,7 @@ module.exports = class Message {
 
 		let guild = await this.client.db.guilds.findOne({ guildId: message.guild.id });
 
-		if (guild['config']['commands']['channelId'] !== null && guild['config']['commands']['channelId'] !== message.channel.id) return;
+		if (guild && guild['config']['commands']['channelId'] !== null && guild['config']['commands']['channelId'] !== message.channel.id) return;
 
 		if (cmd.config.clear) message.delete();
 
