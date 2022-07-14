@@ -1,5 +1,6 @@
 const
     { Client, Intents, Collection } = require('discord.js');
+const { emit } = require('../db/users.js');
 
 module.exports = class Bot {
     constructor() {
