@@ -1,6 +1,6 @@
 const
     Command = require('../../base/Command.js'),
-    { MessageEmbed, MessageButton, MessageActionRow, Message } = require('discord.js');
+    { MessageEmbed, MessageButton, MessageActionRow, Message, MessageSelectMenu } = require('discord.js');
 
 let users = {};
 
@@ -45,6 +45,9 @@ module.exports = class Rank extends Command {
                 this.category = 'user';
                 interaction.update({ embeds: [this.embedUserServerInfo(interaction.message)], components: [this.buttons()] });
                 break;
+            case "month":
+                interaction.update(await this.embedChannel(interaction.message, interaction.values[0]));
+                break;
         }
     }
 
@@ -62,7 +65,7 @@ module.exports = class Rank extends Command {
     }
 
     async embedAccount(message) {
-        let userId = this.users[message.id],
+        let userId = this.users[message.id].userId,
             user = await this.client.db.users.findOne({ userId }),
             embedAccount = new MessageEmbed().setTimestamp();
             
@@ -96,7 +99,7 @@ module.exports = class Rank extends Command {
      * @param {Message} message
     */
     embedUserServerInfo(message) {
-        let user = message.guild.members.cache.get(this.users[message.id]);
+        let user = message.guild.members.cache.get(this.users[message.id].userId);
         if (!user) return new MessageEmbed()
             .setDescription(`<@${message.member.id}>: So far there is no information about you.`)
             .setColor('#f64072')
@@ -116,7 +119,7 @@ module.exports = class Rank extends Command {
     }
 
     async embedUserTime(message) {
-        let userId = this.users[message.id],
+        let userId = this.users[message.id].userId,
             user = await this.client.db.users.findOne({ userId }),
             member = message.guild.members.cache.get(userId),
             time = this.getTime(user),
@@ -146,6 +149,54 @@ module.exports = class Rank extends Command {
             .setTimestamp();
     }
 
+    async embedChannel(message, month) {
+        let userId = this.users[message.id]?.userId,
+            channelId = this.users[message.id]?.channelId,
+            user = await this.client.db.users.findOne({ userId }),
+            member = message.guild.members.cache.get(userId),
+            _month = Math.floor(month) || (new Date().getMonth() + 1),
+            monthName = ['january', 'february', 'martha', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'],
+            monthEmoji = ['❄️️', '🥶', '🌷', '🌺', '🐝', '🌈', '🌞', '🍎', '🌦', '🍁', '🍂', '🎄'];
+
+        if (!channelId) return { embeds: [new MessageEmbed().setDescription(`Couldn't find such a channel, try again.`).setColor('RED')], components: [] }
+        if (!userId) return { embeds: [new MessageEmbed().setDescription(`Couldn't find such a user, try again.`).setColor('RED')], components: [] }
+
+        let list = user.inVoice.filter(x => x.channels.find(ch => ch.channelId === channelId));
+
+        let embed = new MessageEmbed()
+            .setAuthor({
+                iconURL: member?.displayAvatarURL(),
+                name: `${member?.user.tag} [${member?.nickname}]`
+            })
+            .setDescription(
+                `See how long you spent in voice chat <#${channelId}> in **${monthEmoji[_month - 1]} ${monthName[_month - 1]}**\n\n` + 
+                list.filter(x => x.month === _month).map(ch => `**Day:** ${ch.day} ➜ \` ${this.client.getTime(ch.channels.find(c => c.channelId === channelId).total)} \``).join('\n') || `You haven't been in voice channels yet :(`
+            )
+            .setTimestamp();
+
+        let selectMonth = new MessageSelectMenu()
+            .setCustomId('rank:month')
+            .setPlaceholder('Select the month for which you want to view statistics')
+            .addOptions([
+                ...[
+                    ...new Set(list.map(ch => Math.floor(ch.month)))
+                ].map(ch => Object({
+                    value: `${ch}`,
+                    label: monthName[ch - 1][0].toUpperCase() + monthName[ch - 1].slice(1),
+                    emoji: monthEmoji[ch - 1],
+                    description: `${list.filter(x => x.month === ch).length} days`,
+                    default: ch === _month
+                }))
+            ])
+        return {
+            embeds: [embed],
+            components: [
+                new MessageActionRow()
+                    .addComponents(selectMonth)
+            ]
+        }
+    }
+
     buttons() {
         let buttonAccount = new MessageButton()
             .setLabel('Account')
@@ -172,12 +223,13 @@ module.exports = class Rank extends Command {
     }
 
     async run(message, args) {
-        let userId = args[0] ? /<@(.*)>/.exec(args[0])[1] : message.member.id;
+        let userId = args[0] ? /<@(.*)>/.exec(args[0])[1] : message.member.id,
+            channelId = /<#(.*)>/.exec(args[1])[1];
         this.category = message.content.slice(this.client.prefix.length).split(' ')[0] === 'user' ? 'user' : 'account';
         message.channel.send({ embeds: [new MessageEmbed().setFooter('.')] }).then(async m => {
-            this.users[m.id] = await userId;
-            m.edit({
-                embeds: [this.category === 'account' ? await this.embedAccount(m) : await this.embedUserServerInfo(m)],
+            this.users[m.id] = { userId, channelId };
+            m.edit(channelId ? await this.embedChannel(m) : {
+                embeds: [this.category === 'account' ? await this.embedAccount(m) :  await this.embedUserServerInfo(m)],
                 components: [this.buttons()]
             });
         });

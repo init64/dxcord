@@ -19,6 +19,51 @@ module.exports = class Bot {
         this.logs = new (require('./Logs.js'))(this);
 
         this.prefix = '>';
+    
+        // this.test();
+    }
+
+    async test() {
+        let id = '991339111434682488';
+        let top = await this.db.users.aggregate([
+            { $match: { 'inVoice.channels.channelId': id } },
+            {
+                $project: {
+                    userId: 1,
+                    roles: 1,
+                    inVoice: 1,
+                    channels: {
+                        $map: {
+                            input: {
+                                $filter: {
+                                    input: '$inVoice',
+                                    as: 'c',
+                                    cond: {
+                                        $filter: {
+                                            input: '$$c.channels',
+                                            as: 'ch',
+                                            conf: {
+                                                $eq: ['$$ch.channelId', id]
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            in: '$$this.channels'
+                        }
+                    }
+                }
+            },
+            // { $sort: { 'total': -1 } },
+            // { $limit: 10 }
+        ]);
+
+        for (let a of top) {
+            console.log(a.channels);
+            // for (let c of a.inVoice) {
+            //     console.log(c);
+            // }
+        }
     }
 
     getTime(s) {

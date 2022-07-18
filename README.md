@@ -4,5 +4,5 @@
 
 ```js
 TOKEN= // Token Discord Bot
-MONGO_URI= // Not necessary. (default = "dsx")
+MONGO_URI= // Not necessary. (default = "dxcord")
 ```
