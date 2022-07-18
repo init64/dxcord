@@ -68,15 +68,17 @@ module.exports = class Rank extends Command {
                     roles: 1,
                     inVoice: 1,
                     total: {
-                        $reduce: {
-                            input: {
-                                $map: {
-                                    input: '$inVoice',
-                                    in: { $arrayElemAt: ['$$this.channels', 0.0] }
+                        $sum: {
+                            $map: {
+                                input: '$inVoice',
+                                in: {
+                                    $reduce: {
+                                        input: '$$this.channels.total',
+                                        initialValue: 0,
+                                        in: { $add: ['$$value', '$$this'] }
+                                    }
                                 }
-                            },
-                            initialValue: 0,
-                            in: { $add: ['$$value', '$$this.total'] }
+                            }
                         }
                     }
                 }
@@ -98,25 +100,27 @@ module.exports = class Rank extends Command {
                     roles: 1,
                     inVoice: 1,
                     total: {
-                        $reduce: {
-                            input: {
-                                $map: {
-                                    input: {
-                                        $filter: {
-                                            input: '$inVoice',
-                                            cond: {
-                                                $and: [
-                                                    { $eq: ['$$this.month', month] },
-                                                    { $eq: ['$$this.year', year] }
-                                                ]
-                                            }
+                        $sum: {
+                            $map: {
+                                input: {
+                                    $filter: {
+                                        input: '$inVoice',
+                                        cond: {
+                                            $and: [
+                                                { $eq: ['$$this.month', month] },
+                                                { $eq: ['$$this.year', year] }
+                                            ]
                                         }
-                                    },
-                                    in: { $arrayElemAt: ['$$this.channels', 0.0] }
+                                    }
+                                },
+                                in: {
+                                    $reduce: {
+                                        input: '$$this.channels.total',
+                                        initialValue: 0,
+                                        in: { $add: ['$$value', '$$this'] }
+                                    }
                                 }
-                            },
-                            initialValue: 0,
-                            in: { $add: ['$$value', '$$this.total'] }
+                            }
                         }
                     }
                 }
@@ -138,26 +142,28 @@ module.exports = class Rank extends Command {
                     roles: 1,
                     inVoice: 1,
                     total: {
-                        $reduce: {
-                            input: {
-                                $map: {
-                                    input: {
-                                        $filter: {
-                                            input: '$inVoice',
-                                            cond: {
-                                                $and: [
-                                                    { $eq: ['$$this.day', day] },
-                                                    { $eq: ['$$this.month', month] },
-                                                    { $eq: ['$$this.year', year] }
-                                                ]
-                                            }
+                        $sum: {
+                            $map: {
+                                input: {
+                                    $filter: {
+                                        input: '$inVoice',
+                                        cond: {
+                                            $and: [
+                                                { $eq: ['$$this.day', day] },
+                                                { $eq: ['$$this.month', month] },
+                                                { $eq: ['$$this.year', year] }
+                                            ]
                                         }
-                                    },
-                                    in: { $arrayElemAt: ['$$this.channels', 0.0] }
+                                    }
+                                },
+                                in: {
+                                    $reduce: {
+                                        input: '$$this.channels.total',
+                                        initialValue: 0,
+                                        in: { $add: ['$$value', '$$this'] }
+                                    }
                                 }
-                            },
-                            initialValue: 0,
-                            in: { $add: ['$$value', '$$this.total'] }
+                            }
                         }
                     }
                 }
