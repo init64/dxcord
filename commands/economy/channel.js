@@ -8,12 +8,11 @@ module.exports = class Rank extends Command {
     constructor(client) {
         super(client, {
             name: 'channel',
-            description: '',
+            description: 'Find out the leaderboard on a specific channel',
             dirname: __dirname,
-            emoji: '',
+            emoji: '🔊',
             aliases: ['ch'],
-            interactionEvents: true,
-            hide: true
+            interactionEvents: true
         });
 
         this.client = client;
@@ -27,15 +26,15 @@ module.exports = class Rank extends Command {
         switch(args[0]) {
             case "all_time":
                 this.category = 'all_time';
-                interaction.update({ embeds: [await this.embedAllTime()], components: [this.buttons()] });
+                interaction.update({ embeds: [await this.embedAllTime(interaction.message)], components: [this.buttons()] });
                 break;
             case "month":
                 this.category = 'month';
-                interaction.update({ embeds: [await this.embedMonth()], components: [this.buttons()] });
+                interaction.update({ embeds: [await this.embedMonth(interaction.message)], components: [this.buttons()] });
                 break;
             case "today":
                 this.category = 'today';
-                interaction.update({ embeds: [await this.embedToday()], components: [this.buttons()] });
+                interaction.update({ embeds: [await this.embedToday(interaction.message)], components: [this.buttons()] });
                 break;
         }
     }
@@ -53,20 +52,22 @@ module.exports = class Rank extends Command {
         }
     }
 
-    createEmbed(top, text) {
+    createEmbed(top, text, channelId) {
         return new MessageEmbed()
             .setAuthor({
                 iconURL: this.client.bot.user.displayAvatarURL(),
                 name: this.client.bot.user.username,
                 url: 'https://dsx.ninja'
             })
-            .setDescription(`Find out who is the leader in the amount\nof time spent in voice chat for **${text}**.`)
+            .setDescription(`Find out who is the leader in the amount\nof time spent in voice chat <#${channelId}> for **${text}**.`)
             .addField(' ᠌', top.map((x, i) => `**${i + 1}.** <@${x.userId}> ➜ \` ${this.client.getTime(x.total)} \``).join('\n'))
             .setTimestamp()
     }
 
-    async embedAllTime() {
-        let top = await this.client.db.users.aggregate([
+    async embedAllTime(message) {
+        let channelId = this.channels[message.id],
+            top = await this.client.db.users.aggregate([
+            { $match: { 'inVoice.channels.channelId': channelId } },
             {
                 $project: {
                     userId: 1,
@@ -77,7 +78,16 @@ module.exports = class Rank extends Command {
                             input: {
                                 $map: {
                                     input: '$inVoice',
-                                    in: { $arrayElemAt: ['$$this.channels', 0.0] }
+                                    in: { $ifNull: [{
+                                        $arrayElemAt: [{
+                                            $filter: {
+                                                input: '$$this.channels',
+                                                cond: {
+                                                    $eq: ['$$this.channelId', channelId]
+                                                }
+                                            }
+                                        }, 0.0]
+                                    }, { total: 0 }] },
                                 }
                             },
                             initialValue: 0,
@@ -90,13 +100,14 @@ module.exports = class Rank extends Command {
             { $limit: 10 }
         ]);
 
-        return this.createEmbed(top, 'all time');
+        return this.createEmbed(top, 'all time', channelId);
     }
 
-    async embedMonth() {
+    async embedMonth(message) {
         let { month, year } = this.nowDate(),
+            channelId = this.channels[message.id],
             top = await this.client.db.users.aggregate([
-            { $match: { 'inVoice.month': month, 'inVoice.year': year } },
+            { $match: { 'inVoice.channels.channelId': channelId } },
             {
                 $project: {
                     userId: 1,
@@ -106,18 +117,22 @@ module.exports = class Rank extends Command {
                         $reduce: {
                             input: {
                                 $map: {
-                                    input: {
-                                        $filter: {
-                                            input: '$inVoice',
-                                            cond: {
-                                                $and: [
-                                                    { $eq: ['$$this.month', month] },
-                                                    { $eq: ['$$this.year', year] }
-                                                ]
+                                    input: '$inVoice',
+                                    as: 'v',
+                                    in: { $ifNull: [{
+                                        $arrayElemAt: [{
+                                            $filter: {
+                                                input: '$$v.channels',
+                                                cond: {
+                                                    $and: [
+                                                        { $eq: ['$$v.month', month] },
+                                                        { $eq: ['$$v.year', year] },
+                                                        { $eq: ['$$this.channelId', channelId] }
+                                                    ]
+                                                }
                                             }
-                                        }
-                                    },
-                                    in: { $arrayElemAt: ['$$this.channels', 0.0] }
+                                        }, 0.0]
+                                    }, { total: 0 }] },
                                 }
                             },
                             initialValue: 0,
@@ -130,13 +145,14 @@ module.exports = class Rank extends Command {
             { $limit: 10 }
         ]);
 
-        return this.createEmbed(top, 'month');
+        return this.createEmbed(top, 'month', channelId);
     }
 
-    async embedToday() {
+    async embedToday(message) {
         let { day, month, year } = this.nowDate(),
+            channelId = this.channels[message.id],
             top = await this.client.db.users.aggregate([
-            { $match: { 'inVoice.day': day, 'inVoice.month': month, 'inVoice.year': year } },
+            { $match: { 'inVoice.channels.channelId': channelId } },
             {
                 $project: {
                     userId: 1,
@@ -146,19 +162,23 @@ module.exports = class Rank extends Command {
                         $reduce: {
                             input: {
                                 $map: {
-                                    input: {
-                                        $filter: {
-                                            input: '$inVoice',
-                                            cond: {
-                                                $and: [
-                                                    { $eq: ['$$this.day', day] },
-                                                    { $eq: ['$$this.month', month] },
-                                                    { $eq: ['$$this.year', year] }
-                                                ]
+                                    input: '$inVoice',
+                                    as: 'v',
+                                    in: { $ifNull: [{
+                                        $arrayElemAt: [{
+                                            $filter: {
+                                                input: '$$v.channels',
+                                                cond: {
+                                                    $and: [
+                                                        { $eq: ['$$v.day', day] },
+                                                        { $eq: ['$$v.month', month] },
+                                                        { $eq: ['$$v.year', year] },
+                                                        { $eq: ['$$this.channelId', channelId] }
+                                                    ]
+                                                }
                                             }
-                                        }
-                                    },
-                                    in: { $arrayElemAt: ['$$this.channels', 0.0] }
+                                        }, 0.0]
+                                    }, { total: 0 }] },
                                 }
                             },
                             initialValue: 0,
@@ -171,25 +191,25 @@ module.exports = class Rank extends Command {
             { $limit: 10 }
         ]);
 
-        return this.createEmbed(top, 'today');
+        return this.createEmbed(top, 'today', channelId);
     }
 
     buttons() {
         let buttonAllTime = new MessageButton()
             .setLabel('All time')
-            .setCustomId('top:all_time')
+            .setCustomId('channel:all_time')
             .setStyle(this.category === 'all_time' ? 'SECONDARY' : 'PRIMARY')
             .setEmoji('⌛')
             .setDisabled(this.category === 'all_time');
         let buttonMonth = new MessageButton()
             .setLabel('Month')
-            .setCustomId('top:month')
+            .setCustomId('channel:month')
             .setStyle(this.category === 'month' ? 'SECONDARY' : 'PRIMARY')
             .setEmoji('📅')
             .setDisabled(this.category === 'month');
         let buttonToday = new MessageButton()
             .setLabel('Today')
-            .setCustomId('top:today')
+            .setCustomId('channel:today')
             .setStyle(this.category === 'today' ? 'SECONDARY' : 'PRIMARY')
             .setEmoji('🗓️')
             .setDisabled(this.category === 'today');
@@ -199,13 +219,13 @@ module.exports = class Rank extends Command {
             .addComponents(buttonToday);
     }
 
-    async run(message) {
+    async run(message, args) {
         if (!args[0]) return;
         let channelId = /<#(.*)>/.exec(args[0])[1];
         message.channel.send({ embeds: [new MessageEmbed().setFooter('.')] }).then(async m => {
             this.channels[m.id] = channelId;
             m.edit({
-                embeds: [await this.embedAllTime()],
+                embeds: [await this.embedAllTime(m)],
                 components: [this.buttons()]
             });
         });

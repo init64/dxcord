@@ -10,19 +10,27 @@ const init = async () => {
     // ? Load all commands
     const dirCommands = await fs.readdirSync('./commands/');
     for (let dir of dirCommands) {
-        let dirCategory = await fs.readdirSync(`./commands/${dir}/`);
-        for (let command of dirCategory.filter(cmd => !cmd.split('.').includes('.off.') && cmd.split('.').pop('.js'))) {
-            client.loadCommand(`../commands/${dir}`, command);
+        try {
+            let dirCategory = await fs.readdirSync(`./commands/${dir}/`);
+            for (let command of dirCategory.filter(cmd => !cmd.split('.').includes('.off.') && cmd.split('.').pop('.js'))) {
+                client.loadCommand(`../commands/${dir}`, command);
+            }
+        } catch (err) {
+            console.log('Command', err);
         }
     }
 
     // ? Load all events
     const eventsFiles = await fs.readdirSync(`./events/`);
 	for (let file of eventsFiles) {
-        let eventName = file.split(".")[0],
-            event = new (require(`./events/${file}`))(client);
-		client.bot.on(eventName, (...args) => event.run(...args));
-		delete require.cache[require.resolve(`./events/${file}`)];
+        try {
+            let eventName = file.split(".")[0],
+                event = new (require(`./events/${file}`))(client);
+            client.bot.on(eventName, (...args) => event.run(...args));
+            delete require.cache[require.resolve(`./events/${file}`)];
+        } catch (err) {
+            console.log('Event:', err);
+        }
     }
 
     if (process.env.TOKEN) client.bot.login(process.env.TOKEN);

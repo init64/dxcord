@@ -224,7 +224,7 @@ module.exports = class Rank extends Command {
 
     async run(message, args) {
         let userId = args[0] ? /<@(.*)>/.exec(args[0])[1] : message.member.id,
-            channelId = /<#(.*)>/.exec(args[1])[1];
+            channelId = args[1] ? /<#(.*)>/.exec(args[1])[1] : null;
         this.category = message.content.slice(this.client.prefix.length).split(' ')[0] === 'user' ? 'user' : 'account';
         message.channel.send({ embeds: [new MessageEmbed().setFooter('.')] }).then(async m => {
             this.users[m.id] = { userId, channelId };

@@ -6,9 +6,9 @@ module.exports = class Rank extends Command {
     constructor(client) {
         super(client, {
             name: 'top',
-            description: '',
+            description: 'Find out the leaderboard all over the server',
             dirname: __dirname,
-            emoji: '📊',
+            emoji: '🌏',
             aliases: [],
             interactionEvents: true
         });
