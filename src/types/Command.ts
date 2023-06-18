@@ -5,14 +5,18 @@ import {
     ApplicationCommandType,
     type ChatInputCommandInteraction,
     type UserContextMenuCommandInteraction,
-    type MessageContextMenuCommandInteraction
+    type MessageContextMenuCommandInteraction,
+    type ApplicationCommandOptionType,
+    RESTPostAPIChatInputApplicationCommandsJSONBody
 } from 'discord.js';
 
-interface IChatCommand {
+interface IDataSlashCommand {
     name: string;
-    description: string;
+    descrition: string;
+}
+
+interface IChatCommand extends RESTPostAPIChatInputApplicationCommandsJSONBody {
     aliases?: Array<IChatCommand>;
-    NSFW?: boolean;
     interactionEvents?: boolean;
 }
 
@@ -21,23 +25,16 @@ interface IContextMenuCommand {
 }
 
 export class ChatCommand {
-    data: Array<SlashCommandBuilder> = [];
+    data: Array<IChatCommand> = [];
     options: IChatCommand;
 
     constructor(commandOptions: IChatCommand) {
-        for (let command of [commandOptions, ...commandOptions?.aliases || []]) {
-            const cmd = new SlashCommandBuilder()
-                .setName(command.name)
-                .setDescription(command.description)
-                .setNSFW(command.NSFW || false);
-
-            this.data = [...this.data || [], cmd];
-        }
+        this.data = [...this.data || [], commandOptions, ...commandOptions?.aliases || []];
 
         this.options = commandOptions;
     }
 
-    async interaction(args: Array<string>, interaction: ChatInputCommandInteraction): Promise<any> {
+    async interaction(args: Array<string>, interaction: any): Promise<any> {
         return;
     }
 

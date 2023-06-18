@@ -76,7 +76,7 @@ class Bot {
                     for (let data of command.data) {
                         this.commands.set(data.name, command);
 
-                        listCommands = [...listCommands || [], data.toJSON()];
+                        listCommands = [...listCommands || [], data];
                     }
 
                     continue;
