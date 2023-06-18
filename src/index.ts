@@ -160,15 +160,14 @@ class Bot {
         });
 
         this.client.on('interactionCreate', async interaction => {
-            
-            // if (this[category[0]]) this[category[0]](category.slice(1), interaction);
-            
-            try {
+            if ((interaction as any)?.customId) {
                 let category = (interaction as any)?.customId?.split(':'),
                     command = this.commands.get(category[0]);
     
                 if (command && command.options.interactionEvents && command?.interaction) return command?.interaction(category.slice(1), interaction as any);
-                
+            }
+            
+            try {
                 if (interaction.isChatInputCommand()) {
                     let command = this.commands.get(interaction.commandName);
 
