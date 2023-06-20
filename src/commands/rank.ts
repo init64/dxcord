@@ -7,16 +7,15 @@ import {
     ButtonBuilder,
     ButtonStyle,
     StringSelectMenuBuilder,
-    InteractionResponse,
-    ButtonInteraction
+    ButtonInteraction,
+    User,
+    ChannelType
 } from 'discord.js';
 
 import { ChatCommand } from '../types/Command';
 
 import voiceModel, { IVisit } from '../models/voice';
 import userModel from '../models/user';
-
-let users: { [key: string]: { userId: string, voiceId: string } } = {};
 
 interface IUserTimeChannels {
     [key: string]: {
@@ -31,9 +30,23 @@ interface IUserTime {
     channels: IUserTimeChannels;
 }
 
+const months = [
+    ['january', '❄️️'],
+    ['february', '🥶'],
+    ['martha', '🌷'],
+    ['april', '🌺'],
+    ['may', '🐝'],
+    ['june', '🌈'],
+    ['july', '🌞'],
+    ['august', '🍎'],
+    ['september', '🌦'],
+    ['october', '🍁'],
+    ['november', '🍂'],
+    ['december', '🎄']
+];
+
 export default class Command extends ChatCommand {
     client: Client;
-    category: 'account' | 'user' | 'time' = 'account';
 
     constructor(client: Client) {
         super({
@@ -42,12 +55,12 @@ export default class Command extends ChatCommand {
             options: [
                 {
                     name: 'user',
-                    description: 'User',
+                    description: 'Select the user you want to know about',
                     type: ApplicationCommandOptionType.User,
                 },
                 {
                     name: 'channel',
-                    description: 'Channel',
+                    description: 'Select a voice channel',
                     type: ApplicationCommandOptionType.Channel
                 }
             ],
@@ -58,22 +71,22 @@ export default class Command extends ChatCommand {
     }
 
     async interaction(args: Array<string>, interaction: ButtonInteraction) {
+        const
+            userId = args[1],
+            voiceId = args[2],
+            month = isNaN(Number(args[3])) ? new Date().getMonth() + 1 : Number(args[3]),
+            user = this.client.users.cache.get(userId);
+
         switch(args[0]) {
-            case "account":
-                this.category = 'account';
-                interaction.update({ embeds: [await this.embedAccount(interaction.message.interaction.id)], components: [this.buttons() as any] });
+            case 'account':
+                interaction.update({ embeds: [await this.embedAccount(user)], components: [this.buttons(user.id, args[0]) as any] });
                 break;
-            case "time":
-                this.category = 'time';
-                interaction.update({ embeds: [await this.embedUserTime(interaction)], components: [this.buttons() as any] });
+            case 'time':
+                interaction.update({ embeds: [await this.embedUserTime(user)], components: [this.buttons(userId, args[0]) as any] });
                 break;
-            case "user":
-                this.category = 'user';
-                interaction.update({ embeds: [this.embedUserServerInfo(interaction)], components: [this.buttons() as any] });
+            case 'month':
+                interaction.update(await this.embedChannel(user, voiceId, month));
                 break;
-            // case "month":
-            //     interaction.update(await this.embedChannel(interaction, interaction.values[0]));
-            //     break;
         }
     }
 
@@ -87,12 +100,20 @@ export default class Command extends ChatCommand {
         return (d > 0 ? `${d}d ` : '') + (h > 0 ? `${h}h ` : '') + (m > 0 ? `${m}m ` : '') + `${s}s`;
     }
 
+    error(text: string) {
+        return {
+            embeds: [new EmbedBuilder().setDescription(text).setColor('Red')],
+            components: [] as any
+        }
+    }
+
     async getUserTime(userId: string) {
         const user = await userModel.user(userId);
 
         const voices = await voiceModel.find({ user: user._id });
 
         let total = 0,
+            allMonths: { [key: number]: { total: number; list: Array<IVisit>; } } = {},
             channels: IUserTimeChannels = {} as any,
             month: IUserTime = { channels: {} } as any,
             today: IUserTime = { channels: {} } as any,
@@ -103,13 +124,20 @@ export default class Command extends ChatCommand {
             if (!channels[voice.voiceId]) channels[voice.voiceId] = { total: 0, list: [] }
 
             for (let day of voice.visits) {
-                const d = new Date(day.joinedAt);
+                const
+                    date = new Date(day.joinedAt),
+                    m = date.getMonth();
 
                 total += day.seconds;
                 channels[voice.voiceId].total = total;
                 channels[voice.voiceId].list = [...channels[voice.voiceId].list || [], day];
 
-                if (d <= new Date(year, date.getMonth() + 1)) {
+                if (!allMonths[m]) allMonths[m] = { total: 0, list: [] }
+
+                allMonths[m].total += day.seconds;
+                allMonths[m].list = [...allMonths[m].list || [], day];
+
+                if (date <= new Date(year, date.getMonth() + 1)) {
                     month.total += day.seconds;
                     month.list = [...month.list || [], day];
 
@@ -119,7 +147,7 @@ export default class Command extends ChatCommand {
                     month.channels[voice.voiceId].list = [...month.channels[voice.voiceId].list || [], day];
                 }
 
-                if (d <= new Date(year, date.getMonth() + 1, date.getDate())) {
+                if (date <= new Date(year, date.getMonth() + 1, date.getDate())) {
                     today.total += day.seconds;
                     today.list = [...today.list || [], day];
 
@@ -134,25 +162,21 @@ export default class Command extends ChatCommand {
         return {
             all: { total, list: voices, channels },
             month,
-            today
+            today,
+            allMonths
         }
     }
 
-    async embedAccount(id: string) {
-        if (!users[id]) return {};
-
-        const { userId } = users[id];
-
+    async embedAccount(user: User) {
         const
-            { all, month, today } = await this.getUserTime(userId),
-            embedAccount = new EmbedBuilder().setTimestamp(),
-            member = this.client.users.cache.get(userId);
+            { all, month, today } = await this.getUserTime(user.id),
+            embedAccount = new EmbedBuilder().setTimestamp();
             
         if (all.list.length > 0) {
             embedAccount
                 .setAuthor({
-                    iconURL: member.displayAvatarURL(),
-                    name: member.username
+                    iconURL: user.displayAvatarURL(),
+                    name: user.username
                 })
                 .setDescription(`**Time in voice chat:**\n`)
                 .addFields(
@@ -164,21 +188,15 @@ export default class Command extends ChatCommand {
                 .setColor('#2f3136')
         } else {
             embedAccount
-                .setDescription(`<@${userId}>: So far there is no information about you.`)
+                .setDescription(`<@${user.id}>: So far there is no information about you.`)
                 .setColor('#f64072');
         }
 
         return embedAccount;
     }
 
-    async embedUserTime(interaction: ButtonInteraction) {
-        if (!users[interaction.message.interaction.id]) return;
-
-        const { userId } = users[interaction.message.interaction.id];
-
-        const
-            { all, month, today } = await this.getUserTime(userId),
-            member = this.client.users.cache.get(interaction.user.id);
+    async embedUserTime(user: User) {
+        const { all, month, today } = await this.getUserTime(user.id);
 
         const getList = (channels: IUserTimeChannels) => {
             if (Object.keys(channels).length < 1) return '` So far there is nothing here `';
@@ -194,8 +212,8 @@ export default class Command extends ChatCommand {
 
         return new EmbedBuilder()
             .setAuthor({
-                iconURL: member?.displayAvatarURL(),
-                name: member.username
+                iconURL: user?.displayAvatarURL(),
+                name: user.username
             })
             .setTitle(`User time in channels`)
             .setDescription(`Find out which channels you spent the most time on.`)
@@ -207,154 +225,112 @@ export default class Command extends ChatCommand {
             .setTimestamp();
     }
 
-    embedUserServerInfo(interaction: ButtonInteraction) {
-        if (!users[interaction.message.interaction.id]) return;
+    async embedChannel(user: User, voiceId: string, month: number = new Date().getMonth() + 1) {
+        month = Math.floor(month);
 
-        const user = this.client.users.cache.get(users[interaction.message.interaction.id].userId);
+        const channel = this.client.channels.cache.get(voiceId);
 
-        if (!user) return new EmbedBuilder()
-            .setDescription(`<@${user.id}>: So far there is no information about you.`)
-            .setColor('#f64072')
-            .setTimestamp()
+        if (!user) return this.error(`Couldn't find such a user, try again.`);
+        if (!voiceId) return this.error(`Couldn't find such a channel, try again.`);
+        if (channel.type !== ChannelType.GuildVoice) return this.error(`<#${voiceId}> is not suitable. You need to specify the voice channel.`);
 
-        return new EmbedBuilder()
+        const
+            { allMonths } = await this.getUserTime(user.id),
+            list = allMonths[month - 1].list;
+        
+        let days: { [key: number]: { seconds: number } } = {};
+
+        for (let i = 0; i < list.length; i++) {
+            const
+                day = new Date(list[i].joinedAt).getDate(),
+                secs = list[i].seconds;
+
+            if (!days[day]) days[day] = { seconds: secs  }
+            else days[day].seconds += secs;
+        }
+
+        const embed = new EmbedBuilder()
             .setAuthor({
                 iconURL: user?.displayAvatarURL(),
                 name: user?.username
             })
-            .setTitle(`User information`)
-            // .addFields(
-            //     { name: '', value: '', inline: true }
-            // )
-            // .addField(`Created At`, this.client.timeago(user?.user.createdAt), true)
-            // .addField(`Joined At`, this.client.timeago(user?.joinedAt), true)
-            // .addField(`Roles [${user.roles.cache.size}]`, user.roles.cache.map(role => `<@&${role.id}>`).join(' '), true)
-            // .addField(`Color`, user.colo, true)
-            .setThumbnail(user?.banner ? user?.bannerURL() : null)
-            .setTimestamp();
-    }
-
-    async embedChannel(interaction: ButtonInteraction, month: number = new Date().getMonth() + 1) {
-        if (!users[interaction.message.interaction.id]) return;
-
-        const { userId, voiceId } = users[interaction.message.interaction.id];
-
-        let member = this.client.users.cache.get(interaction.user.id),
-            _month = Math.floor(month),
-            monthName = ['january', 'february', 'martha', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'],
-            monthEmoji = ['❄️️', '🥶', '🌷', '🌺', '🐝', '🌈', '🌞', '🍎', '🌦', '🍁', '🍂', '🎄'];
-
-        const error = (text: string) => ({
-            embeds: [new EmbedBuilder().setDescription(text).setColor('Red')],
-            components: [] as any
-        });
-
-        if (!voiceId) return error(`Couldn't find such a channel, try again.`);
-        if (!userId) return error(`Couldn't find such a user, try again.`);
-
-        const
-            date = new Date(),
-            day = date.getDate(),
-            year = date.getFullYear();
-
-        const voices = await voiceModel.find({ userId, voiceId, createdAt: {
-            $gte: new Date(year, _month, day),
-            $lt: new Date(year, _month, day)
-        } });
-
-        const embed = new EmbedBuilder()
-            .setAuthor({
-                iconURL: member?.displayAvatarURL(),
-                name: member?.username
-            })
             .setDescription(
-                `See how long you spent in voice chat <#${voiceId}> in **${monthEmoji[_month - 1]} ${monthName[_month - 1]}**\n\n` +
-                voices.map(day => {
-                    const d = new Date(day.createdAt);
-
-                    let total = 0;
-                    for (let v of day.visits) {
-                        total += v.seconds;
-                    }
-
-                    return `**Day:** ${d.getDate()} ➜ \` ${this.getTime(total)} \``
+                `See how long you spent in voice chat <#${voiceId}> in **${months[month - 1][0]} ${months[month - 1][1]}**\n` +
+                `Total: \` ${this.getTime(allMonths[month - 1].total)} \` (${Object.keys(days).length} days)\n\n` +
+                Object.keys(days).map(day => {
+                    return `**Day:** ${day} ➜ \` ${this.getTime(days[Number(day)].seconds)} \``
                 }).join('\n') || `You haven't been in voice channels yet :(`
             )
             .setTimestamp();
 
-        // const selectMonth = new StringSelectMenuBuilder()
-        //     .setCustomId('rank:month')
-        //     .setPlaceholder('Select the month for which you want to view statistics')
-        //     .addOptions([
-        //         ...[...new Set(list.map(ch => Math.floor(ch.month)))].map(ch => Object({
-        //             value: `${ch}`,
-        //             label: monthName[ch - 1][0].toUpperCase() + monthName[ch - 1].slice(1),
-        //             emoji: monthEmoji[ch - 1],
-        //             description: `${list.filter(x => x.month === ch).length} days`,
-        //             default: ch === _month
-        //         }))
-        //     ]);
+        let listMonths: any[] = [];
+
+        for (let m of months.filter((_, i) => allMonths[i]?.list?.length > 0)) {
+            const i = months.findIndex(f => f[0] === m[0]);
+
+            listMonths = [...listMonths || [], {
+                label: `${m[1]} ` + m[0][0].toLocaleUpperCase() + m[0].slice(1),
+                description: this.getTime(allMonths[i].total) + ` (${Object.keys(days).length} days)`,
+                value: String(i),
+                default: (i + 1) === month
+            }];
+        }
+
+        const selectMonth = new StringSelectMenuBuilder()
+            .setCustomId(`rank:month:${user.id}:${voiceId}`)
+            .setPlaceholder('Select the month for which you want to view statistics')
+            .addOptions(listMonths);
+
+        const buttonBack = new ButtonBuilder()
+            .setCustomId(`rank:account:${user.id}`)
+            .setStyle(ButtonStyle.Secondary)
+            .setLabel('Account')
+            .setEmoji('👤')
+
+        const buttonReload = new ButtonBuilder()
+            .setCustomId(`rank:month:${user.id}:${voiceId}:${month}`)
+            .setStyle(ButtonStyle.Success)
+            .setLabel('Reload')
+            .setEmoji('🔁')
 
         return {
             embeds: [embed],
-            // components: [new ActionRowBuilder().addComponents(selectMonth)]
+            components: [
+                new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMonth),
+                new ActionRowBuilder<ButtonBuilder>().addComponents(buttonBack, buttonReload)
+            ]
         }
     }
 
-    buttons() {
-        const style = (name: 'account' | 'user' | 'time') => this.category === name ? ButtonStyle.Secondary : ButtonStyle.Primary;
+    buttons(userId: string, category: 'account' | 'time' = 'account') {
+        const style = (name: 'account' | 'time') => category === name ? ButtonStyle.Secondary : ButtonStyle.Primary;
 
         const buttonAccount = new ButtonBuilder()
             .setLabel('Account')
-            .setCustomId('rank:account')
+            .setCustomId(`rank:account:${userId}`)
             .setStyle(style('account'))
             .setEmoji('👤')
-            .setDisabled(this.category === 'account');
+            .setDisabled(category === 'account');
 
         const buttonUserTime = new ButtonBuilder()
             .setLabel('Time in channels')
-            .setCustomId('rank:time')
+            .setCustomId(`rank:time:${userId}`)
             .setStyle(style('time'))
             .setEmoji('🕙')
-            .setDisabled(this.category === 'time');
-
-        const buttonServerInfo = new ButtonBuilder()
-            .setLabel('User information')
-            .setCustomId('rank:user')
-            .setStyle(style('user'))
-            .setEmoji('✨')
-            .setDisabled(this.category === 'user');
+            .setDisabled(category === 'time');
 
         return new ActionRowBuilder()
-            .addComponents(buttonAccount, buttonUserTime, buttonServerInfo);
+            .addComponents(buttonAccount, buttonUserTime);
     }
 
     async execute(interaction: ChatInputCommandInteraction, client: Client) {
         const
             user = interaction.options.getUser('user') || interaction.user,
             channel = interaction.options.getChannel('channel');
-
-        // this.category = message.content.slice(this.client.prefix.length).split(' ')[0] === 'user' ? 'user' : 'account';
-        // message.channel.send({ embeds: [new MessageEmbed().setFooter('.')] }).then(async m => {
-        //     this.users[m.id] = { userId, channelId };
-        //     m.edit(channelId ? await this.embedChannel(m) : {
-        //         embeds: [this.category === 'account' ? await this.embedAccount(m) :  await this.embedUserServerInfo(m)],
-        //         components: [this.buttons()]
-        //     });
-        // });
         
-        interaction.reply({
-            embeds: [new EmbedBuilder().setFooter({ text: 'Loading...' })]
-        }).then(async m => {
-            users[m.id] = { userId: user.id, voiceId: channel?.id };
-
-            console.log(1, m.id);
-            
-
-            m.edit(channel?.id ? await this.embedChannel(m as any) : {
-                embeds: [this.category === 'account' ? await this.embedAccount(m.id) :  await this.embedUserServerInfo(m as any)],
-                components: [this.buttons() as any]
-            });
+        interaction.reply(channel?.id ? await this.embedChannel(user, channel.id) : {
+            embeds: [await this.embedAccount(user)],
+            components: [this.buttons(user.id) as any]
         });
     }
 }
